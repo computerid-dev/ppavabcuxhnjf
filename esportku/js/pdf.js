@@ -65,7 +65,7 @@ export async function buildPdf(m, o = {}) {
     const X = v => ox + v * s, Y = v => oy + v * s;
     lay.lines.forEach(l => { for (let i = 1; i < l.length; i++) c.ln(X(l[i - 1][0]), Y(l[i - 1][1]), X(l[i][0]), Y(l[i][1]), INK, Math.max(.8, 1.5 * s)); });
     lay.chips.forEach(k => { c.rr(X(k.x), Y(k.y), 190 * s, 20 * s, 4 * s, hd); c.tx(k.text, X(k.x) + 10 * s, Y(k.y) + 5.5 * s, 10.5 * s, { font: fb, c: "#ffffff" }); });
-    const { W, H, HH, RH, SC } = BX;
+    const { H, HH, RH, SC, CW } = BX, W = lay.W, ns = lay.sets;
     const frame = (bx, by, head, hs) => { c.rr(bx, by, W * s, H * s, 4 * s, "#ffffff", hd, 1.2); c.rr(bx, by, W * s, HH * s, 4 * s, hd); c.rect(bx, by + (HH - 4) * s, W * s, 4 * s, hd); c.tx(head, bx, by + (HH * s - hs) / 2, hs, { font: fb, c: "#ffffff", al: "c", w: W * s, max: (W - 8) * s }); };
     lay.boxes.forEach(b => {
       const bx = X(b.x), by = Y(b.y), fs = 9 * s;
@@ -73,10 +73,12 @@ export async function buildPdf(m, o = {}) {
       if (logoMode) c.rect(bx + (W - SC) * s, by + HH * s, SC * s - .6, 2 * RH * s - .6, NAVY);
       c.ln(bx, by + (HH + RH) * s, bx + W * s, by + (HH + RH) * s, logoMode ? "#ffffff" : "#999999");
       c.ln(bx + (W - SC) * s, by + HH * s, bx + (W - SC) * s, by + H * s, "#999999");
+      if (ns) c.ln(bx + (W - SC - ns * CW) * s, by + HH * s, bx + (W - SC - ns * CW) * s, by + H * s, "#cccccc");
       b.rows.forEach((r, i) => {
         const ry = by + (HH + i * RH) * s, im = logoMode ? lg(r.id) : null, tx0 = bx + (im ? 22 : 6) * s;
         if (im) c.im(im, bx + 4 * s, ry + 1.5 * s, 16 * s, 16 * s);
-        c.tx(r.name, tx0, ry + (RH * s - fs) / 2, fs, { font: r.win ? fb : r.ph ? fi : f, c: r.ph ? "#666666" : INK, max: (W - SC - 4) * s - (tx0 - bx) });
+        c.tx(r.name, tx0, ry + (RH * s - fs) / 2, fs, { font: r.win ? fb : r.ph ? fi : f, c: r.ph ? "#666666" : INK, max: (W - SC - ns * CW - 4) * s - (tx0 - bx) });
+        r.cells.forEach((v, j) => c.tx(v, bx + (W - SC - (ns - j) * CW) * s, ry + (RH * s - 9 * s) / 2, 9 * s, { c: "#333333", al: "c", w: CW * s }));
         c.tx(r.score, bx + (W - SC) * s, ry + (RH * s - 10 * s) / 2, 10 * s, { font: fb, c: logoMode ? "#ffffff" : INK, al: "c", w: SC * s });
       });
       c.rr(bx, by, W * s, H * s, 4 * s, null, hd, 1.2);
