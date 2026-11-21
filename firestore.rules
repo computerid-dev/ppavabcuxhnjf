@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{d}/documents {
+    function signed() { return request.auth != null; }
+    function isAdmin() { return signed() && exists(/databases/$(d)/documents/admins/$(request.auth.uid)); }
+    function ownsTournament(t) { return signed() && get(/databases/$(d)/documents/tournaments/$(t)).data.ownerId == request.auth.uid; }
+    // getAfter dipakai agar turnamen yang dibuat dalam satu batch bersama tim dan pertandingannya tetap lolos
+    function ownsAfter(t) { return signed() && getAfter(/databases/$(d)/documents/tournaments/$(t)).data.ownerId == request.auth.uid; }
+
+    match /admins/{u} { allow read: if signed() && request.auth.uid == u; }
+    match /sports/{s} { allow read: if true; allow write: if isAdmin(); }
+
+    match /pins/{p} {
+      allow get: if signed();
+      allow list, create, delete: if isAdmin();
+      allow update: if signed() && resource.data.used == false
+        && request.resource.data.used == true && request.resource.data.usedBy == request.auth.uid;
+    }
+    match /users/{u} {
+      allow read: if signed() && (request.auth.uid == u || isAdmin());
+      allow create: if signed() && request.auth.uid == u && request.resource.data.role == 'pengelola'
+        && request.resource.data.active == true
+        && getAfter(/databases/$(d)/documents/pins/$(request.resource.data.pin)).data.usedBy == u;
+      allow update, delete: if isAdmin();
+    }
+    match /tournaments/{t} {
+      allow read: if resource.data.published == true || isAdmin() || (signed() && resource.data.ownerId == request.auth.uid);
+      allow create: if signed() && request.resource.data.ownerId == request.auth.uid
+        && get(/databases/$(d)/documents/users/$(request.auth.uid)).data.active == true;
+      allow update: if isAdmin() || (signed() && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == request.auth.uid
+        && resource.data.get('blocked', false) == false && request.resource.data.get('blocked', false) == false);
+      allow delete: if isAdmin() || (signed() && resource.data.ownerId == request.auth.uid);
+      match /{sub}/{x} {
+        allow read: if true;
+        allow write: if isAdmin() || ownsTournament(t) || ownsAfter(t);
+      }
+    }
+  }
+}
