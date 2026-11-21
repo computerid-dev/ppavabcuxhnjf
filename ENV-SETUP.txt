@@ -1,0 +1,27 @@
+ESPORTKU memakai Firebase langsung dari browser (via CDN), jadi tidak ada environment variable server.
+Konfigurasi Firebase web bersifat publik; keamanan data dijaga oleh firestore.rules. Nilai di bawah sudah tertanam di esportku/js/fb.js.
+
+Key: apiKey
+Value: AIzaSyDhYVk9mRraOVg_efWcA5Er44OOGvBgjVw
+
+Key: authDomain
+Value: partnersfingsh10001.firebaseapp.com
+
+Key: projectId
+Value: partnersfingsh10001
+
+Key: storageBucket
+Value: partnersfingsh10001.firebasestorage.app
+
+Key: messagingSenderId
+Value: 383897610650
+
+Key: appId
+Value: 1:383897610650:web:6294451af377ba51ccb223
+
+=== SETUP FIREBASE (sekali saja) ===
+1. Firebase Console > Authentication > Sign-in method > aktifkan "Email/Password".
+2. Firestore Database > Rules > tempel isi file firestore.rules > Publish.
+3. Buat akun admin: Authentication > Users > Add user. Email: admin@esportku.app (username login: admin), isi password. Salin UID-nya.
+4. Firestore Database > Start collection "admins" > Document ID = UID tadi > tambah 1 field apa saja (contoh: aktif = true).
+5. Login di halaman Masuk dengan username admin, buka Panel Admin, klik "Isi kategori bawaan", lalu "Buat PIN baru" untuk dibagikan ke pengelola.
