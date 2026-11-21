@@ -94,11 +94,11 @@ export const pack = m => ({ ...m, sets: (m.sets || []).map(x => (Array.isArray(x
 export const unpack = m => ({ ...m, sets: (m.sets || []).map(x => (Array.isArray(x) ? x : String(x).split("-").map(Number))) });
 
 // ===== Bagan alur (eliminasi) untuk laporan PDF =====
-export const BX = { W: 168, H: 55, HH: 17, RH: 19, GX: 28, VG: 9, SC: 26 };
+export const BX = { W: 168, H: 55, HH: 17, RH: 19, GX: 28, VG: 9, SC: 26, CW: 17 };
 
 // Menghitung posisi kotak & garis penghubung bagan. title(m) = judul kotak, num = Map(_id -> nomor pertandingan)
-export const bracketLayout = (ms, fmt, title, num) => {
-  const { W, H, GX, VG } = BX, ko = ms.filter(m => m.stage !== "grup");
+export const bracketLayout = (ms, fmt, title, num, sets = 0) => {
+  const { H, GX, VG } = BX, W = BX.W + sets * BX.CW, ko = ms.filter(m => m.stage !== "grup");
   if (!ko.length) return null;
   const src = {};
   ko.forEach(m => { const n = num.get(m._id); if (!n) return; if (m.nw) src[m.nw] = "Pemenang P" + n; if (m.nl) src[m.nl] = "Kalah P" + n; });
@@ -107,7 +107,7 @@ export const bracketLayout = (ms, fmt, title, num) => {
   const mkBox = (m, x, y) => {
     const row = s => {
       const name = s ? m.nb : m.na, slot = m._id + ":" + (s ? "b" : "a");
-      return { id: s ? m.b : m.a, name: name || src[slot] || (m.bye ? "BYE" : "TBD"), ph: !name, win: !!name && m.done && (m.bye || (s ? m.sb > m.sa : m.sa > m.sb)), score: m.done && !m.bye ? String(s ? m.sb : m.sa) : "-" };
+      return { id: s ? m.b : m.a, name: name || src[slot] || (m.bye ? "BYE" : "TBD"), ph: !name, win: !!name && m.done && (m.bye || (s ? m.sb > m.sa : m.sa > m.sb)), score: m.done && !m.bye ? String(s ? m.sb : m.sa) : "-", cells: Array.from({ length: sets }, (_, j) => (m.done && !m.bye && m.sets[j] ? String(m.sets[j][s]) : "-")) };
     };
     return { x, y, head: m.bye ? "BYE" : title(m), rows: [row(0), row(1)] };
   };
@@ -148,18 +148,19 @@ export const bracketLayout = (ms, fmt, title, num) => {
   const c = champOf(fin);
   champ.name = c ? c.name : ""; champ.id = c ? c.id : null;
   const w = champ.x + W, h = Math.max(...boxes.map(b => b.y), champ.y) + H;
-  return { boxes, lines, chips, champ, w, h };
+  return { boxes, lines, chips, champ, w, h, W, sets };
 };
 
 // Menggambar bagan sebagai SVG (pm: "plain" atau "logo")
 export const bracketSvg = (lay, pm, L = {}, style = "") => {
-  const { W, H, HH, RH, SC } = BX, logo = pm === "logo", hd = logo ? "#10245a" : "#111111", ff = "Segoe UI,Roboto,Arial,sans-serif";
+  const { H, HH, RH, SC, CW } = BX, W = lay.W, sets = lay.sets, logo = pm === "logo", hd = logo ? "#10245a" : "#111111", ff = "Segoe UI,Roboto,Arial,sans-serif";
   const e = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const cut = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
   const box = b => {
     const rows = b.rows.map((r, i) => {
-      const top = HH + i * RH, x0 = logo && L[r.id] ? 24 : 6, n = Math.floor((W - SC - x0 - 4) / 5.2);
-      return (logo && L[r.id] ? `<image href="${e(L[r.id])}" x="4" y="${top + 1.5}" width="16" height="16" preserveAspectRatio="xMidYMid slice"/>` : "")
+      const top = HH + i * RH, x0 = logo && L[r.id] ? 24 : 6, n = Math.floor((W - SC - sets * CW - x0 - 4) / 5.2);
+      const cs = r.cells.map((v, j) => `<text x="${W - SC - (sets - j) * CW + CW / 2}" y="${top + RH / 2 + 3.6}" font-size="9.5" text-anchor="middle" fill="#333">${e(v)}</text>`).join("");
+      return cs + (logo && L[r.id] ? `<image href="${e(L[r.id])}" x="4" y="${top + 1.5}" width="16" height="16" preserveAspectRatio="xMidYMid slice"/>` : "")
         + `<text x="${x0}" y="${top + RH / 2 + 3.4}" font-size="10" fill="${r.ph ? "#666" : "#111"}" font-style="${r.ph ? "italic" : "normal"}" font-weight="${r.win ? 700 : 400}">${e(cut(r.name, n))}</text>`
         + `<text x="${W - SC / 2}" y="${top + RH / 2 + 4}" font-size="11" font-weight="700" text-anchor="middle" fill="${logo ? "#fff" : "#111"}">${e(r.score)}</text>`;
     }).join("");
@@ -168,7 +169,7 @@ export const bracketSvg = (lay, pm, L = {}, style = "") => {
       + `<text x="${W / 2}" y="${HH / 2 + 3.2}" font-size="9" font-weight="700" text-anchor="middle" fill="#fff">${e(cut(b.head, 30))}</text>`
       + `<rect x="${W - SC}" y="${HH}" width="${SC}" height="${2 * RH}" fill="${logo ? "#10245a" : "#fff"}"/>`
       + `<line x1="0" y1="${HH + RH}" x2="${W}" y2="${HH + RH}" stroke="${logo ? "#fff" : "#999"}" stroke-width=".6" clip-path="none"/>`
-      + `<line x1="${W - SC}" y1="${HH}" x2="${W - SC}" y2="${H}" stroke="#999" stroke-width=".6"/>${rows}</g>`;
+      + `<line x1="${W - SC}" y1="${HH}" x2="${W - SC}" y2="${H}" stroke="#999" stroke-width=".6"/>${sets ? `<line x1="${W - SC - sets * CW}" y1="${HH}" x2="${W - SC - sets * CW}" y2="${H}" stroke="#ccc" stroke-width=".6"/>` : ""}${rows}</g>`;
   };
   const c = lay.champ, cb = `<g transform="translate(${c.x},${c.y})"><rect width="${W}" height="${H}" rx="4" fill="#fff" stroke="${hd}" stroke-width="1.4"/><path d="M0 4Q0 0 4 0H${W - 4}Q${W} 0 ${W} 4V${HH}H0Z" fill="${hd}"/><text x="${W / 2}" y="${HH / 2 + 3.4}" font-size="10" font-weight="700" text-anchor="middle" fill="#fff" letter-spacing="2">JUARA</text>${c.id && logo && L[c.id] ? `<image href="${e(L[c.id])}" x="8" y="${HH + 10}" width="22" height="22" preserveAspectRatio="xMidYMid slice"/>` : ""}<text x="${c.id && logo && L[c.id] ? 38 : W / 2}" y="${HH + 25}" font-size="12" font-weight="700" text-anchor="${c.id && logo && L[c.id] ? "start" : "middle"}" fill="#111">${e(cut(c.name, 18))}</text></g>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 ${lay.w + 4} ${lay.h + 4}" preserveAspectRatio="xMidYMin meet" font-family="${ff}" style="${style}">`
