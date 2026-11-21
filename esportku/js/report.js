@@ -37,7 +37,7 @@ export const makeModel = ({ t, ts, ms, L, pm }) => {
     fmtLabel: FMT[fmt] || "", notes: notesFor(fmt, set), logos: L, printed: new Date().toLocaleString("id-ID"),
     klas: hasT ? [...new Set(ts.map(x => x.grp || ""))].sort().map(G => ({ grp: G, rows: table(ts.filter(x => (x.grp || "") === G), gm).map((r, i) => ({ no: i + 1, n: r.n, logo: r.logo, p: r.p, w: r.w, d: r.d, l: r.l, diff: r.f - r.a, pt: r.pt })) })) : [],
     matches: vis.map((m, i) => ({ no: i + 1, label: lab(m), done: m.done, when: m.when || "", rows: [row(m, 0), row(m, 1)] })),
-    layout: hasK ? bracketLayout(ms, fmt, m => `P${num.get(m._id)} · ${lab(m)}`, num) : null
+    layout: hasK ? bracketLayout(ms, fmt, m => `P${num.get(m._id)} · ${lab(m)}`, num, set) : null
   };
 };
 
